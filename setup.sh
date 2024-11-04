@@ -22,18 +22,35 @@ echo -e "${GREEN}Starting Laravel server setup...${NC}"
 apt-get update
 apt-get upgrade -y
 
+# Add PHP repository (required for PHP 8.2 on Ubuntu 22.04)
+apt-get install -y software-properties-common
+add-apt-repository ppa:ondrej/php -y
+apt-get update
+
 # Install required packages
 apt-get install -y \
     nginx \
     mysql-server \
-    php8.1-fpm \
-    php8.1-cli \
-    php8.1-mysql \
-    php8.1-mbstring \
-    php8.1-xml \
-    php8.1-curl \
-    php8.1-zip \
-    php8.1-gd \
+    php8.2-fpm \
+    php8.2-cli \
+    php8.2-common \
+    php8.2-mysql \
+    php8.2-mbstring \
+    php8.2-xml \
+    php8.2-curl \
+    php8.2-zip \
+    php8.2-gd \
+    php8.2-bcmath \
+    php8.2-fileinfo \
+    php8.2-tokenizer \
+    php8.2-ctype \
+    php8.2-dom \
+    php8.2-filter \
+    php8.2-hash \
+    php8.2-openssl \
+    php8.2-pcre \
+    php8.2-pdo \
+    php8.2-session \
     composer \
     git \
     supervisor \
@@ -47,18 +64,20 @@ mysql -e "GRANT ALL PRIVILEGES ON $DB_NAME.* TO '$DB_USER'@'localhost';"
 mysql -e "FLUSH PRIVILEGES;"
 
 # Configure PHP
-sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/' /etc/php/8.1/fpm/php.ini
-systemctl restart php8.1-fpm
+sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/' /etc/php/8.2/fpm/php.ini
+systemctl restart php8.2-fpm
+
+
 
 # Configure Nginx
 cat > /etc/nginx/sites-available/laravel << 'EOL'
 server {
     listen 80;
+    listen [::]:80;
     server_name DOMAIN_PLACEHOLDER;
     root /var/www/laravel/current/public;
 
     add_header X-Frame-Options "SAMEORIGIN";
-    add_header X-XSS-Protection "1; mode=block";
     add_header X-Content-Type-Options "nosniff";
 
     index index.php;
@@ -75,9 +94,10 @@ server {
     error_page 404 /index.php;
 
     location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
     }
 
     location ~ /\.(?!well-known).* {
@@ -134,6 +154,8 @@ php artisan optimize
 php artisan view:cache
 php artisan config:cache
 php artisan route:cache
+php artisan event:cache
+
 
 # Make new release live (atomic switch)
 ln -sfn "$RELEASE_PATH" "$CURRENT_PATH"
@@ -142,7 +164,7 @@ ln -sfn "$RELEASE_PATH" "$CURRENT_PATH"
 cd "$PROJECT_PATH/releases" && ls -t | tail -n +6 | xargs -r rm -rf
 
 # Restart PHP-FPM
-systemctl restart php8.1-fpm
+systemctl restart php8.2-fpm
 
 echo "Deployment completed successfully!"
 EOL
