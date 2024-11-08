@@ -22,6 +22,11 @@ echo -e "${GREEN}Starting Laravel server setup...${NC}"
 apt-get update
 apt-get upgrade -y
 
+# Add PHP repository (required for PHP 8.2 on Ubuntu 22.04)
+apt-get install -y software-properties-common
+add-apt-repository ppa:ondrej/php -y
+apt-get update
+
 # Install required packages
 apt-get install -y \
     nginx \
