@@ -41,22 +41,13 @@ apt-get install -y \
     php8.2-zip \
     php8.2-gd \
     php8.2-bcmath \
-    php8.2-fileinfo \
-    php8.2-tokenizer \
-    php8.2-ctype \
-    php8.2-dom \
-    php8.2-filter \
-    php8.2-hash \
-    php8.2-openssl \
-    php8.2-pcre \
-    php8.2-pdo \
-    php8.2-session \
     composer \
     git \
     supervisor \
     unzip \
     acl
 
+    
 # Configure MySQL
 mysql -e "CREATE DATABASE $DB_NAME;"
 mysql -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD';"
