@@ -52,6 +52,10 @@ apt-get install -y \
     unzip \
     acl
 
+
+# Install Node.js and NPM
+curl -fsSL https://deb.nodesource.com/setup_${NPM_V} | bash -
+apt-get install -y nodejs
     
 # Configure MySQL
 mysql -e "CREATE DATABASE $DB_NAME;"
