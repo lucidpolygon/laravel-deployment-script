@@ -115,10 +115,17 @@ cd $PROJECT_PATH
 git clone $GITHUB_REPO releases/initial
 
 # Create shared directories
-mkdir -p shared/.env
+mkdir -p shared
+touch shared/.env
+
+# If storage exists in git, move to shared or create new folders
+if [ -d "$PROJECT_PATH/releases/initial/storage" ]; then
+    mv "$PROJECT_PATH/releases/initial/storage" "$PROJECT_PATH/shared/"
+else
 mkdir -p shared/storage/app/public
 mkdir -p shared/storage/framework/{cache,sessions,views}
 mkdir -p shared/storage/logs
+fi
 
 # Set permissions
 chown -R www-data:www-data $PROJECT_PATH
@@ -144,8 +151,16 @@ composer install --no-dev --optimize-autoloader
 
 # Link shared resources
 ln -s "$SHARED_PATH/.env" "$RELEASE_PATH/.env"
-rm -rf "$RELEASE_PATH/storage"
 ln -s "$SHARED_PATH/storage" "$RELEASE_PATH/storage"
+
+# Safer storage handling in deploy script
+if [ -d "$RELEASE_PATH/storage" ]; then
+    if [ ! -d "$SHARED_PATH/storage" ]; then
+        mv "$RELEASE_PATH/storage" "$SHARED_PATH/"
+    else
+        rm -rf "$RELEASE_PATH/storage"
+    fi
+fi
 
 # Optimize Laravel
 php artisan optimize
@@ -153,7 +168,6 @@ php artisan view:cache
 php artisan config:cache
 php artisan route:cache
 php artisan event:cache
-
 
 # Make new release live (atomic switch)
 ln -sfn "$RELEASE_PATH" "$CURRENT_PATH"
