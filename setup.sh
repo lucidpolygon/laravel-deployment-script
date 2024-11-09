@@ -13,8 +13,8 @@ PROJECT_PATH="/var/www/laravel"
 DEPLOY_PATH="$PROJECT_PATH/current"
 
 # Versions
-PHP=8.2
-NPM_V=16.x
+PHP_V=8.2
+NPM_V=23.x # Check what versions is supported by your Ubuntu https://github.com/nodesource/distributions
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -56,7 +56,7 @@ apt-get install -y \
 # Install Node.js and NPM
 curl -fsSL https://deb.nodesource.com/setup_${NPM_V} | bash -
 apt-get install -y nodejs
-    
+
 # Configure MySQL
 mysql -e "CREATE DATABASE $DB_NAME;"
 mysql -e "CREATE USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD';"
@@ -122,9 +122,9 @@ touch shared/.env
 if [ -d "$PROJECT_PATH/releases/initial/storage" ]; then
     mv "$PROJECT_PATH/releases/initial/storage" "$PROJECT_PATH/shared/"
 else
-mkdir -p shared/storage/app/public
-mkdir -p shared/storage/framework/{cache,sessions,views}
-mkdir -p shared/storage/logs
+    mkdir -p shared/storage/app/public
+    mkdir -p shared/storage/framework/{cache,sessions,views}
+    mkdir -p shared/storage/logs
 fi
 
 # Set permissions
