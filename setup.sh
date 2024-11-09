@@ -167,8 +167,42 @@ systemctl restart php${PHP_V}-fpm
 echo "Deployment completed successfully!"
 EOL
 
+# Replace placeholder with actual GitHub repository URL in the deployment script and make it executable
 sed -i "s|GITHUB_REPO_PLACEHOLDER|$GITHUB_REPO|" /usr/local/bin/deploy-laravel
 chmod +x /usr/local/bin/deploy-laravel
+
+# Create rollback script
+cat > /usr/local/bin/rollback-laravel << 'EOL'
+#!/bin/bash
+set -e
+
+# Paths
+PROJECT_PATH="/var/www/laravel"
+CURRENT_PATH="$PROJECT_PATH/current"
+RELEASES_PATH="$PROJECT_PATH/releases"
+
+# Check if there are at least two releases
+if [ $(ls -1 $RELEASES_PATH | wc -l) -lt 2 ]; then
+    echo "No previous release found. Rollback not possible."
+    exit 1
+fi
+
+# Identify the previous release (second latest)
+PREVIOUS_RELEASE=$(ls -1t $RELEASES_PATH | head -n 2 | tail -n 1)
+
+# Rollback to the previous release
+echo "Rolling back to $PREVIOUS_RELEASE..."
+ln -sfn "$RELEASES_PATH/$PREVIOUS_RELEASE" "$CURRENT_PATH"
+
+# Restart services
+systemctl restart php${PHP_V}-fpm  # Ensure this matches your PHP version
+systemctl restart nginx
+
+echo "Rollback to $PREVIOUS_RELEASE completed successfully!"
+EOL
+
+# Make the rollback script executable
+chmod +x /usr/local/bin/rollback-laravel
 
 # Create initial .env file
 cd $PROJECT_PATH/releases/initial
