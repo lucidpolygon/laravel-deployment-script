@@ -68,7 +68,7 @@ sed -i 's/;cgi.fix_pathinfo=1/cgi.fix_pathinfo=0/' /etc/php/${PHP_V}/fpm/php.ini
 systemctl restart php${PHP_V}-fpm
 
 # Configure Nginx
-cat > /etc/nginx/sites-available/laravel << 'EOL'
+cat > /etc/nginx/sites-available/laravel << EOL
 server {
     listen 80;
     listen [::]:80;
@@ -83,7 +83,7 @@ server {
     charset utf-8;
 
     location / {
-        try_files $uri $uri/ /index.php?$query_string;
+        try_files \$uri \$uri/ /index.php?\$query_string;
     }
 
     location = /favicon.ico { access_log off; log_not_found off; }
@@ -93,7 +93,7 @@ server {
 
     location ~ \.php$ {
         fastcgi_pass unix:/var/run/php/php${PHP_V}-fpm.sock;
-        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param SCRIPT_FILENAME \$realpath_root\$fastcgi_script_name;
         include fastcgi_params;
         fastcgi_hide_header X-Powered-By;
     }
@@ -132,35 +132,40 @@ chown -R www-data:www-data $PROJECT_PATH
 chmod -R 775 $PROJECT_PATH
 
 # Create deployment script
-cat > /usr/local/bin/deploy-laravel << 'EOL'
+cat > /usr/local/bin/deploy-laravel << EOL
 #!/bin/bash
 set -e
 
-TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+# Source the config file to load variables
+source "\$CONFIG_FILE"
+
+TIMESTAMP=\$(date +%Y%m%d_%H%M%S)
 PROJECT_PATH="/var/www/laravel"
-RELEASE_PATH="$PROJECT_PATH/releases/$TIMESTAMP"
-SHARED_PATH="$PROJECT_PATH/shared"
-CURRENT_PATH="$PROJECT_PATH/current"
+RELEASE_PATH="\$PROJECT_PATH/releases/\$TIMESTAMP"
+SHARED_PATH="\$PROJECT_PATH/shared"
+CURRENT_PATH="\$PROJECT_PATH/current"
 
 # Clone latest code
-git clone GITHUB_REPO_PLACEHOLDER "$RELEASE_PATH"
-cd "$RELEASE_PATH"
+git clone GITHUB_REPO_PLACEHOLDER "\$RELEASE_PATH"
+cd "\$RELEASE_PATH"
 
 # Install dependencies
 composer install --no-dev --optimize-autoloader
+npm install
+npm run build
 
 # Link shared resources
-ln -s "$SHARED_PATH/.env" "$RELEASE_PATH/.env"
-ln -s "$SHARED_PATH/storage" "$RELEASE_PATH/storage"
+ln -s "\$SHARED_PATH/.env" "\$RELEASE_PATH/.env"
 
 # Safer storage handling in deploy script
-if [ -d "$RELEASE_PATH/storage" ]; then
-    if [ ! -d "$SHARED_PATH/storage" ]; then
-        mv "$RELEASE_PATH/storage" "$SHARED_PATH/"
+if [ -d "\$RELEASE_PATH/storage" ]; then
+    if [ ! -d "\$SHARED_PATH/storage" ]; then
+        mv "\$RELEASE_PATH/storage" "\$SHARED_PATH/"
     else
-        rm -rf "$RELEASE_PATH/storage"
+        rm -rf "\$RELEASE_PATH/storage"
     fi
 fi
+ln -s "\$SHARED_PATH/storage" "\$RELEASE_PATH/storage"
 
 # Optimize Laravel
 php artisan optimize
@@ -170,13 +175,13 @@ php artisan route:cache
 php artisan event:cache
 
 # Make new release live (atomic switch)
-ln -sfn "$RELEASE_PATH" "$CURRENT_PATH"
+ln -sfn "\$RELEASE_PATH" "\$CURRENT_PATH"
 
 # Cleanup old releases (keep last 5)
-cd "$PROJECT_PATH/releases" && ls -t | tail -n +6 | xargs -r rm -rf
+cd "\$PROJECT_PATH/releases" && ls -t | tail -n +6 | xargs -r rm -rf
 
 # Restart PHP-FPM
-systemctl restart php${PHP_V}-fpm
+systemctl restart php\$PHP_V-fpm
 
 echo "Deployment completed successfully!"
 EOL
@@ -186,33 +191,33 @@ sed -i "s|GITHUB_REPO_PLACEHOLDER|$GITHUB_REPO|" /usr/local/bin/deploy-laravel
 chmod +x /usr/local/bin/deploy-laravel
 
 # Create rollback script
-cat > /usr/local/bin/rollback-laravel << 'EOL'
+cat > /usr/local/bin/rollback-laravel << EOL
 #!/bin/bash
 set -e
 
 # Paths
 PROJECT_PATH="/var/www/laravel"
-CURRENT_PATH="$PROJECT_PATH/current"
-RELEASES_PATH="$PROJECT_PATH/releases"
+CURRENT_PATH="\$PROJECT_PATH/current"
+RELEASES_PATH="\$PROJECT_PATH/releases"
 
 # Check if there are at least two releases
-if [ $(ls -1 $RELEASES_PATH | wc -l) -lt 2 ]; then
+if [ \$(ls -1 \$RELEASES_PATH | wc -l) -lt 2 ]; then
     echo "No previous release found. Rollback not possible."
     exit 1
 fi
 
 # Identify the previous release (second latest)
-PREVIOUS_RELEASE=$(ls -1t $RELEASES_PATH | head -n 2 | tail -n 1)
+PREVIOUS_RELEASE=\$(ls -1t \$RELEASES_PATH | head -n 2 | tail -n 1)
 
 # Rollback to the previous release
-echo "Rolling back to $PREVIOUS_RELEASE..."
-ln -sfn "$RELEASES_PATH/$PREVIOUS_RELEASE" "$CURRENT_PATH"
+echo "Rolling back to \$PREVIOUS_RELEASE..."
+ln -sfn "\$RELEASES_PATH/\$PREVIOUS_RELEASE" "\$CURRENT_PATH"
 
 # Restart services
-systemctl restart php${PHP_V}-fpm  # Ensure this matches your PHP version
+systemctl restart php\$PHP_V-fpm  # Ensure this matches your PHP version
 systemctl restart nginx
 
-echo "Rollback to $PREVIOUS_RELEASE completed successfully!"
+echo "Rollback to \$PREVIOUS_RELEASE completed successfully!"
 EOL
 
 # Make the rollback script executable
