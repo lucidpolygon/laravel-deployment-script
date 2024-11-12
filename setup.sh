@@ -131,6 +131,19 @@ mkdir -p $PROJECT_PATH/{shared,releases}
 cd $PROJECT_PATH
 git clone $GITHUB_REPO releases/initial
 
+# Install dependencies
+cd $PROJECT_PATH/releases/initial
+composer install --no-dev --optimize-autoloader
+npm install
+npm run build
+
+# Optimize Laravel
+php artisan optimize
+php artisan view:cache
+php artisan config:cache
+php artisan route:cache
+php artisan event:cache
+
 # Create shared directories
 mkdir -p shared
 touch shared/.env
@@ -212,6 +225,9 @@ cat > /usr/local/bin/rollback-laravel << EOL
 #!/bin/bash
 set -e
 
+# Source the config file to load variables
+source "\$CONFIG_FILE"
+
 # Paths
 PROJECT_PATH="/var/www/laravel"
 CURRENT_PATH="\$PROJECT_PATH/current"
@@ -256,5 +272,3 @@ echo -e "${GREEN}Setup completed successfully!${NC}"
 echo -e "${GREEN}Next steps:${NC}"
 echo "1. Update the shared/.env file with your environment settings"
 echo "2. Run 'deploy-laravel' whenever you want to deploy new changes"
-echo "3. Consider setting up SSL with Let's Encrypt"
-echo "4. Consider setting up GitHub Actions for automated deployment"
