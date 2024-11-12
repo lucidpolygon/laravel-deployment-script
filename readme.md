@@ -10,6 +10,46 @@ The plan is to create one script that sets up everything you need on a DigitalOc
 When you want to make updates later, you should only need to run one command to deploy the new version, with no downtime.
 
 
+## What the script does
+
+- Provision a new DigitalOcean droplet with a supported Ubuntu version (e.g., 24.04 Noble, compatible with [ppa:ondrej/php](https://launchpad.net/~ondrej/+archive/ubuntu/php)).
+- Download the setup script: `wget https://raw.githubusercontent.com/lucidpolygon/laravel-deployment-script/main/setup.sh`
+- Make the script executable: `chmod +x setup.sh`
+- Open the script and update details as needed, including Project Name, Database credentials, and Project Repository URL using a fine-grain access token.
+- Run the setup script: `./setup.sh`
+- The script will create a config file at `/etc/laravel-deploy/config.sh`, used for initial setup and future deployments.
+- The script installs PHP, related packages, Node.js, NPM, and configures Nginx according to Laravel’s requirements.
+- The script will create deployment structures.
+    - root (Laravel)
+        - shared (The shared folder will contain the .env file and storage directory, both shared across all releases.)
+        - releases (keeps upto 5 last versions of the project)
+- It clones the project repository into a releases folder inside the initial directory, installs dependencies, and builds assets with npm run prod.
+- If the storage folder exists in Git, it will be moved to shared; otherwise, new storage folders will be created.
+- Sets correct permissions for all project folders.
+- Copies the .env.example file to the shared folder. You will have to update this with your correct .env
+- Creates initial symlinks from the shared folder to the initial folder.
+- Marks the initial release as the current active version by symlinking the intial folder to current folder.
+- Creates a deployment script at `/usr/local/bin/deploy-laravel` for future deployments. This script:
+    - Uses config variables from `/etc/laravel-deploy/config.sh`.
+    - Creates a new timestamped folder inside releases.
+    - Clones the GitHub repository, installs dependencies, and builds assets.
+    - Links the shared .env and storage resources.
+    - Removes the newly cloned storage directory to continue using the original shared one.
+    - Optimizes Laravel and switches to the new release (atomic switch).
+    - Retains only the latest five releases in releases.
+    - Restarts PHP-FPM.
+- Makes this deployment script executable so that running `deploy-laravel` will launch the new version.
+- Adds a rollback script in `/usr/local/bin/rollback-laravel` to restore the previous release if needed. This script:
+    - Identifies and switches to the previous release.
+    - Restarts PHP and Nginx.
+- Makes the rollback script executable, allowing rollback-laravel to switch back to the previous live version.
+- Setup is complete; ensure .env is updated with real values and run php artisan optimize to launch the project.
+
+
+## Laravel Documentation
+
+https://laravel.com/docs/11.x/deployment#server-requirements
+
 ## Features
 
 - **Nginx Setup**: Configures Nginx as the web server.
@@ -33,5 +73,4 @@ When you want to make updates later, you should only need to run one command to 
 - **Backups**: Automate file and database backups.
 - **Error Logs**: Improve logging and error handling.
 - **Domain Config**: Add domain and SSL setup steps.
-
-This script is a solid starting point for Laravel deployment on DigitalOcean, with room for more features to make it production-ready.
+- **Setup Firewalls**: Add a firewall
