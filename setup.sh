@@ -3,7 +3,22 @@
 # Exit on error
 set -e
 
-# Variables - you'll need to customize these
+# Define config file path
+CONFIG_FILE="/etc/laravel-deploy/config.sh"
+
+# Check if config file exists, create if not
+if [ ! -f "$CONFIG_FILE" ]; then
+    echo "Creating config file at $CONFIG_FILE..."
+    mkdir -p /etc/laravel-deploy
+
+    cat > "$CONFIG_FILE" << EOL
+#!/bin/bash
+
+# PHP and Node.js versions
+PHP_V=8.2
+NPM_V=23.x
+
+# Database and deployment settings
 DB_NAME="laravel"
 DB_USER="laravel_user"
 DB_PASSWORD="your_secure_password"
@@ -11,10 +26,12 @@ GITHUB_REPO="https://github.com/yourusername/your-repo.git"
 DOMAIN="yourdomain.com/server IP"
 PROJECT_PATH="/var/www/laravel"
 DEPLOY_PATH="$PROJECT_PATH/current"
+EOL
+    echo "Config file created successfully!"
+fi
 
-# Versions
-PHP_V=8.2
-NPM_V=23.x # Check what versions is supported by your Ubuntu https://github.com/nodesource/distributions
+# Source the config file to load variables
+source "$CONFIG_FILE"
 
 # Colors for output
 GREEN='\033[0;32m'
